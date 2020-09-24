@@ -6,9 +6,10 @@
 package edu.virginia.biocomplexity.pansim_behavior;
 
 import com.opencsv.exceptions.CsvException;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.arrow.memory.RootAllocator;
@@ -21,191 +22,94 @@ import py4j.GatewayServer;
 public class PansimBehaviorGateway {
     public static GatewayServer gatewayServer;
     
-    public void testStateDataFrame() {
-        RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+    public long seed;
+    public int num_ticks;
+    public int max_visits;
+    
+    public ArrayList<String> attr_names;
+    
+    public String start_state_file;
+    public ArrayList<String> visit_files;
+    
+    public RootAllocator allocator;
+    public StateDataFrameBuilder start_state_df;
+    public TickVisitReader visit_reader;
+    
+    public int next_tick;
+    public byte[] next_state_df_raw;
+    public byte[] next_visit_df_raw;
+    
+    PansimBehaviorGateway () throws IOException, FileNotFoundException, CsvException {
+        seed = Long.parseLong(System.getenv("SEED"));
+        num_ticks = Integer.parseInt(System.getenv("NUM_TICKS"));
+        max_visits = Integer.parseInt(System.getenv("MAX_VISITS"));
+        
+        String[] attrs_sa = System.getenv("VISUAL_ATTRIBUTES").split(",");
+        attr_names = new ArrayList<>(Arrays.asList(attrs_sa));
+        for (String name: attr_names) {
+            System.out.printf("Attibute: %s\n", name);
+        }
+        
+        start_state_file = System.getenv("START_STATE_FILE");
+        visit_files = new ArrayList<>();
+        for (int i=0; i < num_ticks; i++) {
+            String file = System.getenv(String.format("VISIT_FILE_%d", i));
+            visit_files.add(file);
+            System.out.printf("Visit file %d: %s\n", i, file);
+        }
+        
+        allocator = new RootAllocator(Long.MAX_VALUE);
 
-        StateDataFrameBuilder builder = new StateDataFrameBuilder(100000, allocator);
-        builder.reset();
-        for (int i = 0; i < 100 ; i++) {
-            builder.pid.set(i, i);
-            builder.group.set(i, 0);
-            builder.current_state.set(i, 0);
-            builder.next_state.set(i, -1);
-            builder.dwell_time.set(i, -1);
-            builder.seed.set(i, i);
-        }
-        builder.setValueCount(100);
+        start_state_df = StartStateReader.readStartState(start_state_file, allocator, seed);
+        System.out.printf("Start state has %d rows\n", start_state_df.schemaRoot.getRowCount());
         
-        byte[] raw;
-        try {
-            raw = builder.toBytes();
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(raw.length);
+        visit_reader = new TickVisitReader(visit_files, attr_names, num_ticks, max_visits);
         
-        StateDataFrameReader reader;
-        try {
-            reader = new StateDataFrameReader(raw, allocator);
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(reader.schemaRoot.getRowCount());
-        System.out.println(reader.schemaRoot.contentToTSVString());
+        next_tick = 0;
+        next_state_df_raw = start_state_df.toBytes();
+        
+        VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(0, start_state_df, allocator);
+        next_visit_df_raw = next_visit_df.toBytes();
     }
     
-    public void testVisitDataFrame() {
-        RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+    public void runBehaviorModel(byte[] cur_state_df_raw, byte[] visit_output_df_raw) throws IOException, FileNotFoundException, CsvException {
+        StateDataFrameReader cur_state_df = new StateDataFrameReader(cur_state_df_raw, allocator);
+        VisitOutputDataFrameReader visit_output_df = new VisitOutputDataFrameReader(attr_names, visit_output_df_raw, allocator);
         
-        ArrayList<String> attr_names = new ArrayList<>();
-        attr_names.add("attr_1");
-        attr_names.add("attr_2");
-        attr_names.add("attr_3");
-
-        VisitDataFrameBuilder builder = new VisitDataFrameBuilder(attr_names, 1000000, allocator);
-        builder.reset();
-        for (int i = 0; i < 100 ; i++) {
-            builder.lid.set(i, i);
-            builder.pid.set(i, i);
-            builder.group.set(i, 0);
-            builder.state.set(i, 0);
-            builder.behavior.set(i, i % 2);
-            builder.start_time.set(i, i);
-            builder.end_time.set(i, i + 100);
-            for (String attr: attr_names) {
-                builder.attrs.get(attr).set(i, 0);
-            }
-        }
-        builder.setValueCount(100);
+        next_tick++;
         
-        byte[] raw;
-        try {
-            raw = builder.toBytes();
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(raw.length);
+        next_state_df_raw = cur_state_df_raw;
         
-        VisitDataFrameReader reader;
-        try {
-            reader = new VisitDataFrameReader(attr_names, raw, allocator);
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(reader.schemaRoot.getRowCount());
-        System.out.println(reader.schemaRoot.contentToTSVString());
+        VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(next_tick, start_state_df, allocator);
+        next_visit_df_raw = next_visit_df.toBytes();
     }
     
-    public void testVisitOutputDataFrame() {
-        RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
-        
-        ArrayList<String> attr_names = new ArrayList<>();
-        attr_names.add("attr_1");
-        attr_names.add("attr_2");
-        attr_names.add("attr_3");
-
-        VisitOutputDataFrameBuilder builder = new VisitOutputDataFrameBuilder(attr_names, 1000000, allocator);
-        for (int i = 0; i < 100 ; i++) {
-            builder.lid.set(i, i);
-            builder.pid.set(i, i);
-            builder.inf_prob.set(i, 1.0 / i);
-            builder.n_contacts.set(i, i);
-            for (String attr: attr_names) {
-                builder.attrs.get(attr).set(i, 42);
-            }
-        }
-        builder.setValueCount(100);
-        
-        byte[] raw;
-        try {
-            raw = builder.toBytes();
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(raw.length);
-        
-        VisitOutputDataFrameReader reader;
-        try {
-            reader = new VisitOutputDataFrameReader(attr_names, raw, allocator);
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println(reader.schemaRoot.getRowCount());
-        System.out.println(reader.schemaRoot.contentToTSVString());
+    public byte[] getNextStateDataFrame(int tick) {
+        assert tick == next_tick;
+        return next_state_df_raw;
     }
     
-    public void testReplayBehaviorModel() {
-        RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
-        String start_state_file = "/home/parantapa/start.csv";
-        long seed = 42;
-        
-        StateDataFrameBuilder state_df;
-        try {
-            state_df = StartStateReader.readStartState(start_state_file, allocator, seed);
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        } catch (CsvException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println("Start state dataframe");
-        System.out.println(state_df.schemaRoot.getRowCount());
-        System.out.println(state_df.schemaRoot.contentToTSVString());
-        
-        ArrayList<String> visit_files = new ArrayList<String>();
-        visit_files.add("/home/parantapa/visits.csv");
-        
-        ArrayList<String> attr_names = new ArrayList<>();
-        attr_names.add("attr_1");
-        attr_names.add("attr_2");
-        attr_names.add("attr_3");
-        
-        TickVisitReader visit_reader = new TickVisitReader(visit_files, attr_names, 1, 100);
-        VisitDataFrameBuilder visit_df;
-        try {
-            visit_df = visit_reader.getVisits(0, state_df, allocator);
-        } catch (IOException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        } catch (CsvException ex) {
-            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
-            return;
-        }
-        System.out.println("Tick 0 visit dataframe");
-        System.out.println(visit_df.schemaRoot.getRowCount());
-        System.out.println(visit_df.schemaRoot.contentToTSVString());
-    }
-
-    public String processVisitOutputs(String state_ref, String visit_output_ref) {
-        System.out.println(state_ref);
-        System.out.println(visit_output_ref);
-        
-        return "Hello";
+    public byte[] getNextVisitDataFrame(int tick) {
+        assert tick == next_tick;
+        return next_visit_df_raw;
     }
     
     public void shutdown() {
         if (gatewayServer != null) {
             gatewayServer.shutdown();
-            System.out.println("Gateway Server Shutdown");
+            System.out.println("Pansim Behavior Server Shutdown");
         }
     }
     
-    public static void main(String[] args) {
-        // gatewayServer = new GatewayServer(new PansimBehaviorGateway());
-        // gatewayServer.start();
-        // System.out.println("Gateway Server Started");
+    public static void main(String[] args) throws IOException, FileNotFoundException, CsvException {
+        gatewayServer = new GatewayServer(new PansimBehaviorGateway());
+        gatewayServer.start();
+        System.out.println("Pansim Behavior Server Started");
         
-        var g = new PansimBehaviorGateway();
-        //g.testStateDataFrame();
-        //g.testVisitDataFrame();
-        //g.testVisitOutputDataFrame();
-        g.testReplayBehaviorModel();
+        // var g = new SanityCheckTests();
+        // g.testStateDataFrame();
+        // g.testVisitDataFrame();
+        // g.testVisitOutputDataFrame();
+        // g.testReplayBehaviorModel();
     }
 }
