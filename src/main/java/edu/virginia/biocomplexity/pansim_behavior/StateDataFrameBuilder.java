@@ -23,16 +23,7 @@ import org.apache.arrow.vector.types.pojo.Field;
  *
  * @author parantapa
  */
-public class StateDataFrameBuilder {
-    public BigIntVector pid;
-    public TinyIntVector group;
-    public TinyIntVector current_state;
-    public TinyIntVector next_state;
-    public IntVector dwell_time;
-    public BigIntVector seed;
-    
-    public VectorSchemaRoot schemaRoot;
-    
+public class StateDataFrameBuilder extends StateDataFrame {
     public StateDataFrameBuilder(int max_rows, BufferAllocator allocator) {
         pid = new BigIntVector("pid", allocator);
         group = new TinyIntVector("group", allocator);

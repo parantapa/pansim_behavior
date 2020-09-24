@@ -23,14 +23,7 @@ import org.apache.arrow.vector.types.pojo.Field;
  *
  * @author parantapa
  */
-public class VisitOutputDataFrameBuilder {
-    public BigIntVector lid;
-    public BigIntVector pid;
-    public Float8Vector inf_prob;
-    public IntVector n_contacts;
-    public HashMap<String, IntVector> attrs;
-    
-    public VectorSchemaRoot schemaRoot;
+public class VisitOutputDataFrameBuilder extends VisitOutputDataFrame {
     
     VisitOutputDataFrameBuilder(ArrayList<String> attr_names, int max_rows, BufferAllocator allocator) {
         lid = new BigIntVector("lid", allocator);

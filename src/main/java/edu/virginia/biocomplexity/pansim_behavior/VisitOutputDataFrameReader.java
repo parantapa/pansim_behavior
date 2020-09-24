@@ -12,7 +12,6 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.IntVector;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.ipc.message.ArrowBlock;
 import org.apache.arrow.vector.util.ByteArrayReadableSeekableByteChannel;
@@ -21,14 +20,7 @@ import org.apache.arrow.vector.util.ByteArrayReadableSeekableByteChannel;
  *
  * @author parantapa
  */
-public class VisitOutputDataFrameReader {
-    public BigIntVector lid;
-    public BigIntVector pid;
-    public Float8Vector inf_prob;
-    public IntVector n_contacts;
-    public HashMap<String, IntVector> attrs;
-    
-    public VectorSchemaRoot schemaRoot;
+public class VisitOutputDataFrameReader extends VisitOutputDataFrame {
     
     VisitOutputDataFrameReader(ArrayList<String> attr_names, byte[] inb, BufferAllocator allocator) throws IOException {
         ByteArrayReadableSeekableByteChannel in = new ByteArrayReadableSeekableByteChannel(inb);

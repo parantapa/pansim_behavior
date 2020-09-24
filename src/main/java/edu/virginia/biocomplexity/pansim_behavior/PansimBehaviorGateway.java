@@ -5,8 +5,10 @@
  */
 package edu.virginia.biocomplexity.pansim_behavior;
 
+import com.opencsv.exceptions.CsvException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.arrow.memory.RootAllocator;
@@ -137,6 +139,49 @@ public class PansimBehaviorGateway {
         System.out.println(reader.schemaRoot.getRowCount());
         System.out.println(reader.schemaRoot.contentToTSVString());
     }
+    
+    public void testReplayBehaviorModel() {
+        RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+        String start_state_file = "/home/parantapa/start.csv";
+        long seed = 42;
+        
+        StateDataFrameBuilder state_df;
+        try {
+            state_df = StartStateReader.readStartState(start_state_file, allocator, seed);
+        } catch (IOException ex) {
+            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        } catch (CsvException ex) {
+            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        }
+        System.out.println("Start state dataframe");
+        System.out.println(state_df.schemaRoot.getRowCount());
+        System.out.println(state_df.schemaRoot.contentToTSVString());
+        
+        ArrayList<String> visit_files = new ArrayList<String>();
+        visit_files.add("/home/parantapa/visits.csv");
+        
+        ArrayList<String> attr_names = new ArrayList<>();
+        attr_names.add("attr_1");
+        attr_names.add("attr_2");
+        attr_names.add("attr_3");
+        
+        TickVisitReader visit_reader = new TickVisitReader(visit_files, attr_names, 1, 100);
+        VisitDataFrameBuilder visit_df;
+        try {
+            visit_df = visit_reader.getVisits(0, state_df, allocator);
+        } catch (IOException ex) {
+            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        } catch (CsvException ex) {
+            Logger.getLogger(PansimBehaviorGateway.class.getName()).log(Level.SEVERE, null, ex);
+            return;
+        }
+        System.out.println("Tick 0 visit dataframe");
+        System.out.println(visit_df.schemaRoot.getRowCount());
+        System.out.println(visit_df.schemaRoot.contentToTSVString());
+    }
 
     public String processVisitOutputs(String state_ref, String visit_output_ref) {
         System.out.println(state_ref);
@@ -160,6 +205,7 @@ public class PansimBehaviorGateway {
         var g = new PansimBehaviorGateway();
         //g.testStateDataFrame();
         //g.testVisitDataFrame();
-        g.testVisitOutputDataFrame();
+        //g.testVisitOutputDataFrame();
+        g.testReplayBehaviorModel();
     }
 }

@@ -21,17 +21,7 @@ import org.apache.arrow.vector.util.ByteArrayReadableSeekableByteChannel;
  *
  * @author parantapa
  */
-public class VisitDataFrameReader {
-    public BigIntVector lid;
-    public BigIntVector pid;
-    public TinyIntVector group;
-    public TinyIntVector state;
-    public TinyIntVector behavior;
-    public IntVector start_time;
-    public IntVector end_time;
-    public HashMap<String, TinyIntVector> attrs;
-    
-    public VectorSchemaRoot schemaRoot;
+public class VisitDataFrameReader extends VisitDataFrame {
     
     VisitDataFrameReader(ArrayList<String> attr_names, byte[] inb, BufferAllocator allocator) throws IOException {
         ByteArrayReadableSeekableByteChannel in = new ByteArrayReadableSeekableByteChannel(inb);

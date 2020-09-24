@@ -25,17 +25,7 @@ import org.apache.arrow.vector.types.pojo.Field;
  *
  * @author parantapa
  */
-public class VisitDataFrameBuilder {
-    public BigIntVector lid;
-    public BigIntVector pid;
-    public TinyIntVector group;
-    public TinyIntVector state;
-    public TinyIntVector behavior;
-    public IntVector start_time;
-    public IntVector end_time;
-    public HashMap<String, TinyIntVector> attrs;
-    
-    public VectorSchemaRoot schemaRoot;
+public class VisitDataFrameBuilder extends VisitDataFrame {
     
     VisitDataFrameBuilder(ArrayList<String> attr_names, int max_rows, BufferAllocator allocator) {
         lid = new BigIntVector("lid", allocator);
