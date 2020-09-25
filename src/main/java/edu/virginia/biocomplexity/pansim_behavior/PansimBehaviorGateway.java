@@ -78,19 +78,22 @@ public class PansimBehaviorGateway {
         
         next_tick++;
         
-        next_state_df_raw = cur_state_df_raw;
+        if (next_tick < num_ticks) {
+            next_state_df_raw = cur_state_df_raw;
         
-        VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(next_tick, start_state_df, allocator);
-        next_visit_df_raw = next_visit_df.toBytes();
+            VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(next_tick, start_state_df, allocator);
+            next_visit_df_raw = next_visit_df.toBytes();
+        } else {
+            next_state_df_raw = null;
+            next_visit_df_raw = null;
+        }
     }
     
-    public byte[] getNextStateDataFrame(int tick) {
-        assert tick == next_tick;
+    public byte[] getNextStateDataFrame() {
         return next_state_df_raw;
     }
     
-    public byte[] getNextVisitDataFrame(int tick) {
-        assert tick == next_tick;
+    public byte[] getNextVisitDataFrame() {
         return next_visit_df_raw;
     }
     
