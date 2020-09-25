@@ -69,6 +69,7 @@ public class PansimBehaviorGateway {
         next_state_df_raw = start_state_df.toBytes();
         
         VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(0, start_state_df, allocator);
+        System.out.printf("Next visit dataframe has %d rows\n", next_visit_df.schemaRoot.getRowCount());
         next_visit_df_raw = next_visit_df.toBytes();
     }
     
@@ -76,12 +77,17 @@ public class PansimBehaviorGateway {
         StateDataFrameReader cur_state_df = new StateDataFrameReader(cur_state_df_raw, allocator);
         VisitOutputDataFrameReader visit_output_df = new VisitOutputDataFrameReader(attr_names, visit_output_df_raw, allocator);
         
+        System.out.printf("Recived new state dataframe with %d rows\n", cur_state_df.schemaRoot.getRowCount());
+        System.out.printf("Recived new visit output dataframe with %d rows\n", visit_output_df.schemaRoot.getRowCount());
+        
         next_tick++;
         
         if (next_tick < num_ticks) {
             next_state_df_raw = cur_state_df_raw;
         
             VisitDataFrameBuilder next_visit_df = visit_reader.getVisits(next_tick, start_state_df, allocator);
+            System.out.printf("Next visit dataframe has %d rows\n", next_visit_df.schemaRoot.getRowCount());
+
             next_visit_df_raw = next_visit_df.toBytes();
         } else {
             next_state_df_raw = null;
@@ -90,10 +96,12 @@ public class PansimBehaviorGateway {
     }
     
     public byte[] getNextStateDataFrame() {
+        System.out.printf("Returning state dataframe for tick %d\n", next_tick);
         return next_state_df_raw;
     }
     
     public byte[] getNextVisitDataFrame() {
+        System.out.printf("Returning next visit dataframe for tick %d\n", next_tick);
         return next_visit_df_raw;
     }
     
