@@ -105,11 +105,8 @@ public class PansimBehaviorGateway {
         return next_visit_df_raw;
     }
     
-    public void shutdown() {
-        if (gatewayServer != null) {
-            gatewayServer.shutdown();
-            System.out.println("Pansim Behavior Server Shutdown");
-        }
+    public void cleanup() {
+        System.out.println("Preparing Pansim Behavior Server for Shutdown");
     }
     
     public static void main(String[] args) throws IOException, FileNotFoundException, CsvException {
